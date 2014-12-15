@@ -12,6 +12,7 @@
 #define MS_SPLINE_H
 
 #include "generaldefinitions.h"
+#include "string"
 
 namespace MultivariateSplines
 {
@@ -39,6 +40,18 @@ public:
      * Returns the (numVariables x numVariables) Hessian evaluated at x
      */
     virtual DenseMatrix evalHessian(DenseVector x) const = 0;
+
+    /*
+     * Serialize and save spline to fileName
+     * Throws if file could not be opened
+     */
+    virtual void save(const std::string fileName) const = 0;
+
+    /*
+     * Deserialize and load spline from fileName
+     * Throws if file could not be opened or if the file format is wrong
+     */
+    virtual void load(const std::string fileName) = 0;
 };
 
 } // namespace MultivariateSplines

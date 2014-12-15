@@ -13,7 +13,9 @@
 #include "include/mykroneckerproduct.h"
 #include "unsupported/Eigen/KroneckerProduct"
 #include "include/linearsolvers.h"
+#include <generaldefinitions.h>
 
+#include <fstream>
 #include <iostream>
 
 namespace MultivariateSplines
@@ -24,15 +26,7 @@ BSpline::BSpline(DenseMatrix coefficients, std::vector< std::vector<double> > kn
     : coefficients(coefficients)
 {
     numVariables = knotVectors.size();
-    assert(coefficients.rows() == 1);
-
-    basis = BSplineBasis(knotVectors, basisDegrees, KnotVectorType::EXPLICIT);
-
-    computeKnotAverages();
-
-    init();
-
-    checkControlPoints();
+    loadBasis(knotVectors, basisDegrees);
 }
 
 // Constructors for interpolation of samples in DataTable
@@ -77,6 +71,11 @@ BSpline::BSpline(const DataTable &samples, BSplineType type = BSplineType::CUBIC
     init();
 
     checkControlPoints();
+}
+
+BSpline::BSpline(const std::string fileName)
+{
+    load(fileName);
 }
 
 void BSpline::init()
@@ -514,6 +513,201 @@ bool BSpline::removeUnsupportedBasisFunctions(std::vector<double> &lb, std::vect
     knotaverages = knotaverages*A;
 
     return true;
+}
+
+void BSpline::save(const std::string fileName) const
+{
+    std::locale current_locale = std::locale::global(std::locale("C"));
+
+    std::ofstream outFile;
+
+    try
+    {
+        outFile.open(fileName);
+    }
+    catch (const std::ios_base::failure &e)
+    {
+        throw e;
+    }
+
+    // If this function is still alive the file must be open,
+    // no need to call is_open()
+
+    // Write header
+    outFile << "# Saved BSpline" << std::endl;
+    outFile << "# Number of bases: " << numVariables << std::endl;
+    outFile << numVariables << std::endl;
+
+    auto knotVectors = basis.getKnotVectors();
+    for (unsigned int i = 0; i < numVariables; i++)
+    {
+        outFile << basis.getBasisDegree(i) << " " << knotVectors.at(i).size() << std::endl;
+        for (double curKnotVectorValue : knotVectors.at(i))
+        {
+            outFile << std::setprecision(MS_SAVE_DOUBLE_PRECISION) << curKnotVectorValue << " ";
+        }
+        outFile << std::endl;
+    }
+
+    outFile << "# Coefficient matrix:" << std::endl;
+
+    // The order of these loops doesn't matter (for technical reasons)
+    // as long as the load function implements the same order
+    auto numRows = coefficients.rows();
+    auto numCols = coefficients.cols();
+    outFile << numRows << " " << numCols << std::endl;
+    for (auto i = 0; i < numRows; i++)
+    {
+        for (auto j = 0; j < numCols; j++)
+        {
+            outFile << coefficients(i, j) << " ";
+        }
+        outFile << std::endl;
+    }
+
+    // close() also flushes
+    try
+    {
+        outFile.close();
+    }
+    catch (const std::ios_base::failure &e)
+    {
+        throw e;
+    }
+
+    std::locale::global(current_locale);
+}
+
+void BSpline::load(const std::string fileName)
+{
+    // To give a consistent format across all locales, use the C locale when saving and loading
+    std::locale current_locale = std::locale::global(std::locale("C"));
+
+    std::ifstream inFile;
+
+    try
+    {
+        inFile.open(fileName);
+    }
+    catch (const std::ios_base::failure &e)
+    {
+        throw e;
+    }
+
+    // If this function is still alive the file must be open,
+    // no need to call is_open()
+
+    std::string line;
+
+    std::vector<unsigned int> basisDegrees = std::vector<unsigned int>();
+    std::vector<std::vector<double>> knotVectors = std::vector<std::vector<double>>();
+    int cRows, cCols, cRowIdx = 0, basisNum = 0, knotVecLength;
+    int state = 0;
+    while (std::getline(inFile, line))
+    {
+        // Look for comment sign
+        if (line.at(0) == '#')
+        {
+            continue;
+        }
+
+        // Reading number of bases / variables
+        else if (state == 0)
+        {
+            numVariables = checked_strtol(line.c_str(), nullptr);
+            state = 1;
+        }
+
+        // Reading bsplinebasis degree and length of this bsplinebasis' knot vector
+        else if (state == 1)
+        {
+            const char* str = line.c_str();
+            char* nextStr = nullptr;
+            int curDegree = checked_strtol(str, &nextStr);
+            assert(curDegree > 0); // Important because basisDegrees is a vector of unsigned ints
+            basisDegrees.push_back(curDegree);
+
+            // Used in the next iteration when reading the knot vector of this basis
+            knotVecLength = checked_strtol(nextStr, nullptr);
+
+            state = 2;
+        }
+
+        // Read knot vector
+        else if (state == 2)
+        {
+            knotVectors.push_back(std::vector<double>());
+            const char* str = line.c_str();
+            char* nextStr = nullptr;
+            for (int i = 0; i < knotVecLength; i++)
+            {
+                knotVectors.at(basisNum).push_back(checked_strtod(str, &nextStr));
+                str = nextStr;
+            }
+
+            basisNum++;
+            if(basisNum >= numVariables)
+                state = 3;
+            else
+                state = 1;
+        }
+
+        // Reading dimensions of coefficient matrix
+        else if (state == 3)
+        {
+            const char* str = line.c_str();
+            char* nextStr = nullptr;
+            cRows = checked_strtol(str, &nextStr);
+            cCols = checked_strtol(nextStr, nullptr);
+            coefficients.resize(cRows, cCols);
+
+            state = 4;
+        }
+
+        // Read coefficient matrix
+        else if (state == 4)
+        {
+            const char* str = line.c_str();
+            char* nextStr = nullptr;
+            for (int i = 0; i < cCols; i++)
+            {
+                coefficients(cRowIdx, i) = checked_strtod(str, &nextStr);
+                str = nextStr;
+            }
+
+            cRowIdx++;
+
+            if(cRowIdx > cRows)
+                break;
+        }
+    }
+
+    // close() also flushes
+    try
+    {
+        inFile.close();
+    }
+    catch(const std::ios_base::failure &e)
+    {
+        throw e;
+    }
+
+    std::locale::global(current_locale);
+
+    loadBasis(knotVectors, basisDegrees);
+}
+
+void BSpline::loadBasis(std::vector<std::vector<double>> knotVectors, std::vector<unsigned int> basisDegrees)
+{
+    assert(coefficients.rows() == 1);
+
+    basis = BSplineBasis(knotVectors, basisDegrees, KnotVectorType::EXPLICIT);
+
+    computeKnotAverages();
+
+    init();
+
+    checkControlPoints();
 }
 
 } // namespace MultivariateSplines

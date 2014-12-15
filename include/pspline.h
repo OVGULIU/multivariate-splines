@@ -37,6 +37,8 @@ protected:
     void computeControlPoints(const DataTable &samples) override;
     void getSecondOrderFiniteDifferenceMatrix(SparseMatrix &D);
 
+    void save(const std::string fileName) const override {}
+    void load(const std::string fileName) override {}
 };
 
 } // namespace MultivariateSplines

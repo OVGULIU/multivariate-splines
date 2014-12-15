@@ -47,8 +47,10 @@ public:
     //BSpline(DataTable &samples, std::vector<unsigned int> basisDegrees);
     BSpline(const DataTable &samples, BSplineType type);
 
-    virtual BSpline* clone() const { return new BSpline(*this); }
+    // Load B-spline from fileName
+    BSpline(const std::string fileName);
 
+    virtual BSpline* clone() const { return new BSpline(*this); }
     void init();
 
     // Evaluation of B-spline
@@ -74,6 +76,8 @@ public:
     bool reduceDomain(std::vector<double> lb, std::vector<double> ub, bool doRegularizeKnotVectors = true, bool doRefineKnotVectors = false);
 
     bool insertKnots(double tau, unsigned int dim, unsigned int multiplicity = 1); // TODO: move back to private
+
+    void save(const std::string fileName) const override;
 
 protected:
 
@@ -103,6 +107,8 @@ private:
     // Helper functions
     bool pointInDomain(DenseVector x) const;
 
+    void load(const std::string fileName) override;
+    void loadBasis(std::vector<std::vector<double>> knotVectors, std::vector<unsigned int> basisDegrees);
 };
 
 } // namespace MultivariateSplines
