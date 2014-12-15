@@ -13,7 +13,6 @@
 
 #ifndef NDEBUG
     #include <iostream>
-    #include <iomanip>
 #endif // NDEBUG
 
 #include <exception>
@@ -22,6 +21,11 @@
 #include <vector>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+
+#include <iomanip>
+#include <limits>
+
+#define MS_SAVE_DOUBLE_PRECISION 17
 
 namespace MultivariateSplines
 {
@@ -51,6 +55,16 @@ public:
         return this->__what.c_str();
     }
 };
+
+//Simple definition of checked strto* functions according to the implementations of sto* C++11 functions at:
+//  http://msdn.microsoft.com/en-us/library/ee404775.aspx
+//  http://msdn.microsoft.com/en-us/library/ee404860.aspx
+//  https://gcc.gnu.org/svn/gcc/trunk/libstdc++-v3/include/bits/basic_string.h
+//  https://gcc.gnu.org/svn/gcc/trunk/libstdc++-v3/include/ext/string_conversions.h
+
+double checked_strtod(const char* _Str, char** _Eptr);
+
+int checked_strtol(const char* _Str, char** _Eptr, size_t _Base = 10);
 
 } // namespace MultivariateSplines
 

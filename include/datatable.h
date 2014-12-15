@@ -19,8 +19,6 @@
 namespace MultivariateSplines
 {
 
-#define SAVE_DOUBLE_PRECISION 17
-
 /*
  * DataTable is a class for storing multidimensional data samples (x,y).
  * The samples are stored in a continuously sorted table.

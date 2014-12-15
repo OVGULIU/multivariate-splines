@@ -11,7 +11,7 @@ cmake_minimum_required(VERSION 2.8)
 set(CMAKE_BUILD_TYPE Release)
 
 set(MULTIVARIATESPLINES_VERSION_MAJOR 1)
-set(MULTIVARIATESPLINES_VERSION_MINOR 1)
+set(MULTIVARIATESPLINES_VERSION_MINOR 2)
 set(MULTIVARIATESPLINES_VERSION -${MULTIVARIATESPLINES_VERSION_MAJOR}-${MULTIVARIATESPLINES_VERSION_MINOR})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
@@ -77,6 +77,7 @@ set(SRC_LIST
     src/rbfspline.cpp
     src/datasample.cpp
     src/datatable.cpp
+    src/generaldefinitions.cpp
     src/mykroneckerproduct.cpp
 )
 
